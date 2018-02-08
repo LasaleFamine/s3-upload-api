@@ -39,6 +39,16 @@ const app = express();
 
 const multerUpload = multer({limits: {fileSize: 10 * 1024 * 1024}});
 
+app.options('/*', (req, res) => {
+	res.setHeader('Access-Control-Allow-Origin', '*');
+	res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+	res.setHeader(
+		'Access-Control-Allow-Headers',
+		'Content-Type, Authorization, Content-Length, X-Requested-With'
+	);
+	res.sendStatus(200);
+});
+
 // Helper form to upload
 app.get('/upload', (req, res) => {
 	res.status(200)
@@ -48,7 +58,7 @@ app.get('/upload', (req, res) => {
 			.end();
 });
 
-app.post('/upload', multerUpload.array('files'), (req, res) => {
+app.post('/upload', multerUpload.array('files[]'), (req, res) => {
 	if (!req.files) {
 		return res.status(403).send('expect 1 file upload named file1').end();
 	}
@@ -62,6 +72,9 @@ app.post('/upload', multerUpload.array('files'), (req, res) => {
 		}
 	}
 
+	res.setHeader('Content-Type', 'application/json');
+	res.setHeader('Access-Control-Allow-Origin', '*');
+
 	for (const file of files) {
 		const ext = extname(file.originalname);
 		const fileName = `${dashify(file.originalname)}-${parseInt(Math.random() * 10000000, 10)}`;
@@ -70,7 +83,7 @@ app.post('/upload', multerUpload.array('files'), (req, res) => {
 		uploadToS3(awsBucket, ACL, file.buffer, join(folder, pid.toString()))
 			.then(data =>	res
 					.status(200)
-					.send({location: data.Location})
+					.send(JSON.stringify({url: data.Location}))
 					.end())
 			.catch(err => {
 				console.log(err);
@@ -79,6 +92,6 @@ app.post('/upload', multerUpload.array('files'), (req, res) => {
 	}
 });
 
-app.listen(process.env.PORT || 3000, () => {
-	console.log('Example Server listening at port ' + (process.env.PORT || 3000));
+app.listen(process.env.PORT || 9000, () => {
+	console.log('Example Server listening at port ' + (process.env.PORT || 9000));
 });
